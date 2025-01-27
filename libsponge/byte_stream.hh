@@ -2,6 +2,7 @@
 #define SPONGE_LIBSPONGE_BYTE_STREAM_HH
 
 #include <string>
+#include <deque>
 
 //! \brief An in-order byte stream.
 
@@ -10,6 +11,10 @@
 //! and then no more bytes can be written.
 class ByteStream {
   private:
+    size_t capacity_;
+    std::deque<char> data_;
+    bool endedWrite_;
+    size_t bytesWritten_, bytesRead_;
     // Your code here -- add private members as necessary.
 
     // Hint: This doesn't need to be a sophisticated data structure at

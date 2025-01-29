@@ -39,6 +39,10 @@ ByteStream& StreamReassembler::stream_out(){
     return unReadBuffer_;
 }
 
+const ByteStream& StreamReassembler::stream_out() const{
+    return unReadBuffer_;
+}
+
 size_t StreamReassembler::unassembled_bytes() const{
     return unAssembeledBufferSize_;
 }

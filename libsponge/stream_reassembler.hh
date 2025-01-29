@@ -11,9 +11,15 @@ class StreamReassembler{
 
         ByteStream& stream_out();
 
+        const ByteStream& stream_out() const;
+
         size_t unassembled_bytes() const;
 
         bool empty() const;
+
+        uint64_t getNextIdx() const{return nextIdx_;};
+
+        bool getFlag() const{return flag_;};
     private:
         size_t capacity_;
         ByteStream unReadBuffer_;

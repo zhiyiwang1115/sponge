@@ -11,40 +11,32 @@ TCPSender::TCPSender(const size_t capacity,
               }
 
 void TCPSender::fill_window(){
-    if(isFin)return;
+    if(isFin || _next_seqno>=_receiver_window)return;
     TCPSegment segment = TCPSegment();
     if(!isSyn){
         segment.header().syn = true; 
-        segment.header().seqno = wrap(_next_seqno, _isn);
-        _next_seqno += segment.length_in_sequence_space();
-        _bytes_in_flight += segment.length_in_sequence_space();
-        _segments_out.push(segment);
-        _segments_out_copy.push(segment);
-        if(_segments_out_copy.size()==1)sentTime = accumulatedTime;
-        return;
     }
-    if(_next_seqno>=_receiver_window)return;
-    size_t bytesToFill = std::min(_stream.buffer_size()+_stream.remaining_capacity(), _receiver_window - _next_seqno);
-    std::string s = _stream.read(std::min(bytesToFill, _stream.buffer_size()));
-    if(s.empty()){
-        if(_stream.eof()){
-            segment.header().fin = true; 
-            isFin = true;
-            segment.header().seqno = wrap(_next_seqno, _isn);
-            _next_seqno += segment.length_in_sequence_space();
-            _bytes_in_flight += segment.length_in_sequence_space();
-            _segments_out.push(segment);
-            _segments_out_copy.push(segment);
-            if(_segments_out_copy.size()==1)sentTime = accumulatedTime;
-        }
-        return;
+    else{
+        size_t bytesToFill = std::min(_stream.buffer_size()+_stream.remaining_capacity(), _receiver_window - _next_seqno);
+        std::string s = _stream.read(std::min(bytesToFill, _stream.buffer_size()));
+        if(s.empty()){
+            if(_stream.eof()){
+                segment.header().fin = true; 
+                isFin = true;
+            }else{
+                return;
+            } 
+        }else{
+            segment.payload() = Buffer(std::move(s));
+            if(_stream.eof()){
+                segment.header().fin = true; 
+                isFin = true;
+            }
+
+        }    
     }
+
     segment.header().seqno = wrap(_next_seqno, _isn);
-    segment.payload() = Buffer(std::move(s));
-    if(_stream.eof()){
-        segment.header().fin = true; 
-        isFin = true;
-    }
     _next_seqno += segment.length_in_sequence_space();
     _bytes_in_flight += segment.length_in_sequence_space();
     _segments_out.push(segment);

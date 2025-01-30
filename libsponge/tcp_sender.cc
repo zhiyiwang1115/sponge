@@ -19,23 +19,13 @@ void TCPSender::fill_window(){
     else{
         size_t bytesToFill = std::min(_stream.buffer_size()+_stream.remaining_capacity(), _receiver_window - _next_seqno);
         std::string s = _stream.read(std::min(bytesToFill, _stream.buffer_size()));
-        if(s.empty()){
-            if(_stream.eof()){
-                segment.header().fin = true; 
-                isFin = true;
-            }else{
-                return;
-            } 
-        }else{
-            segment.payload() = Buffer(std::move(s));
-            if(_stream.eof()){
-                segment.header().fin = true; 
-                isFin = true;
-            }
-
+        segment.payload() = Buffer(std::move(s));
+        if(_stream.eof()){
+            segment.header().fin = true; 
+            isFin = true;
         }    
     }
-
+    if(segment.length_in_sequence_space()==0)return;
     segment.header().seqno = wrap(_next_seqno, _isn);
     _next_seqno += segment.length_in_sequence_space();
     _bytes_in_flight += segment.length_in_sequence_space();

@@ -1,14 +1,10 @@
 #include "tcp_sender.hh"
 
-TCPSender::TCPSender(const size_t capacity,
-              const uint16_t retx_timeout,
-              const std::optional<WrappingInt32> fixed_isn)
+TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
               :_isn(fixed_isn.has_value() ? fixed_isn.value() : WrappingInt32(0))
               , _initial_retransmission_timeout(retx_timeout)\
               , _timeout(retx_timeout)
-              , _stream(ByteStream(capacity))
-              {
-              }
+              , _stream(ByteStream(capacity)) {}
 
 void TCPSender::fill_window(){
     if(isFin || _next_seqno>=_receiver_window)return;
@@ -40,7 +36,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     auto ackno64 = unwrap(ackno, _isn, _next_seqno);
     if(ackno64>_next_seqno)return;
     _receiver_window = ackno64 + window_size;
-    while(_segments_out_copy.size() && unwrap(_segments_out_copy.front().header().seqno, _isn, _next_seqno)<ackno64){
+    while(_segments_out_copy.size() 
+    && unwrap(_segments_out_copy.front().header().seqno, _isn, _next_seqno)+_segments_out_copy.front().length_in_sequence_space()<=ackno64){
         auto t = _segments_out_copy.front();
         _bytes_in_flight -= t.length_in_sequence_space();
         _segments_out_copy.pop();

@@ -2,7 +2,7 @@
 #define SPONGE_LIBSPONGE_TCP_STATE
 
 #include "tcp_receiver.hh"
-// #include "tcp_sender.hh"
+#include "tcp_sender.hh"
 
 #include <string>
 
@@ -51,7 +51,7 @@ class TCPState {
     std::string name() const;
 
     //! \brief Construct a TCPState given a sender, a receiver, and the TCPConnection's active and linger bits
-    // TCPState(const TCPSender &sender, const TCPReceiver &receiver, const bool active, const bool linger);
+    TCPState(const TCPSender &sender, const TCPReceiver &receiver, const bool active, const bool linger);
 
     //! \brief Construct a TCPState that corresponds to one of the "official" TCP state names
     TCPState(const TCPState::State state);
@@ -60,7 +60,7 @@ class TCPState {
     static std::string state_summary(const TCPReceiver &receiver);
 
     //! \brief Summarize the state of a TCPSender in a string
-    // static std::string state_summary(const TCPSender &receiver);
+    static std::string state_summary(const TCPSender &receiver);
 };
 
 namespace TCPReceiverStateSummary {

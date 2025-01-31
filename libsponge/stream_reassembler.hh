@@ -1,6 +1,7 @@
 #include <string>
 #include <deque>
 #include "byte_stream.hh"
+#include <cstdint>
 #pragma once
 
 class StreamReassembler{

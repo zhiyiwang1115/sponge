@@ -1,4 +1,5 @@
 #include "tcp_sender.hh"
+#include <iostream>
 
 TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
               :_isn(fixed_isn.has_value() ? fixed_isn.value() : WrappingInt32(0))
@@ -8,55 +9,76 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
 
 void TCPSender::fill_window(){
     if(isFin || _next_seqno>=_receiver_window)return;
-    TCPSegment segment = TCPSegment();
     if(!isSyn){
+        TCPSegment segment = TCPSegment();
         segment.header().syn = true; 
+        segment.header().seqno = wrap(_next_seqno, _isn);
+        _next_seqno += segment.length_in_sequence_space();
+        _bytes_in_flight += segment.length_in_sequence_space();
+        _segments_out.push(segment);
+        _segments_out_copy.push(segment);
+        if(_segments_out_copy.size()==1)sentTime = accumulatedTime;
     }
     else{
-        size_t bytesToFill = std::min(_stream.buffer_size()+_stream.remaining_capacity(), _receiver_window - _next_seqno);
-        std::string s = _stream.read(std::min(bytesToFill, _stream.buffer_size()));
-        segment.payload() = Buffer(std::move(s));
-        if(_stream.eof()){
-            segment.header().fin = true; 
-            isFin = true;
-        }    
+        while(_receiver_window>_next_seqno){
+            TCPSegment segment = TCPSegment();
+            size_t bytesToFill = std::min(_stream.buffer_size()+_stream.remaining_capacity(), _receiver_window - _next_seqno);
+            std::string s = _stream.read(std::min(static_cast<size_t>(TCPConfig::MAX_PAYLOAD_SIZE), std::min(bytesToFill, _stream.buffer_size())));
+            segment.payload() = Buffer(std::move(s));
+            if(!isFin && _stream.eof()){
+                if(_next_seqno+segment.payload().size()+1<=_receiver_window){
+                    segment.header().fin = true; 
+                    isFin = true;
+                }
+            }    
+            if(segment.length_in_sequence_space()==0)break;
+            segment.header().seqno = wrap(_next_seqno, _isn);
+            _next_seqno += segment.length_in_sequence_space();
+            _bytes_in_flight += segment.length_in_sequence_space();
+            _segments_out.push(segment);
+            _segments_out_copy.push(segment);
+            if(_segments_out_copy.size()==1)sentTime = accumulatedTime;
+        }
     }
-    if(segment.length_in_sequence_space()==0)return;
-    segment.header().seqno = wrap(_next_seqno, _isn);
-    _next_seqno += segment.length_in_sequence_space();
-    _bytes_in_flight += segment.length_in_sequence_space();
-    _segments_out.push(segment);
-    _segments_out_copy.push(segment);
-    if(_segments_out_copy.size()==1)sentTime = accumulatedTime;
+
     return;
 }
 
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size){
+    windowZero = false;
     isSyn = true;
     auto ackno64 = unwrap(ackno, _isn, _next_seqno);
     if(ackno64>_next_seqno)return;
     _receiver_window = ackno64 + window_size;
+    size_t n = 0;
     while(_segments_out_copy.size() 
     && unwrap(_segments_out_copy.front().header().seqno, _isn, _next_seqno)+_segments_out_copy.front().length_in_sequence_space()<=ackno64){
         auto t = _segments_out_copy.front();
         _bytes_in_flight -= t.length_in_sequence_space();
         _segments_out_copy.pop();
-        _consecutive_retransmissions = 0;
         _timeout = _initial_retransmission_timeout;
+        _consecutive_retransmissions = 0;
+        n += t.payload().size();
     }
-
-    if(_segments_out_copy.size()){
+    if(n>0 && _segments_out_copy.size()){
         sentTime = accumulatedTime;
     }
+    if(window_size==0 && _segments_out_copy.size()==0){
+        _receiver_window = _next_seqno + 1;
+        windowZero = true;
+    }
+    fill_window();
 }
 
 void TCPSender::tick(const size_t ms_since_last_tick){
     accumulatedTime += ms_since_last_tick;
-    if(accumulatedTime-sentTime>=_timeout){
+    if(accumulatedTime-sentTime>=_timeout && _segments_out_copy.size()){
         _segments_out.push(_segments_out_copy.front());
         sentTime = accumulatedTime;
-        _timeout *= 2;
-        ++_consecutive_retransmissions;
+        if(!windowZero){
+            _timeout *= 2;
+            ++_consecutive_retransmissions;
+        }
     }
 }
 

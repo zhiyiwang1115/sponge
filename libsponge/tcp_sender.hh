@@ -37,6 +37,8 @@ class TCPSender{
 
         void updateTime();
 
+        bool windowZero{false};
+
     public:
         TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
               const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,

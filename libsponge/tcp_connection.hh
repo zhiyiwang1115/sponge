@@ -1,16 +1,17 @@
-#pragma once
+#ifndef SPONGE_LIBSPONGE_TCP_FACTORED_HH
+#define SPONGE_LIBSPONGE_TCP_FACTORED_HH
+
 #include "tcp_config.hh"
 #include "tcp_receiver.hh"
 #include "tcp_sender.hh"
 #include "tcp_state.hh"
 
-class TCPConnection{
+//! \brief A complete endpoint of a TCP connection
+class TCPConnection {
   private:
     TCPConfig _cfg;
     TCPReceiver _receiver{_cfg.recv_capacity};
     TCPSender _sender{_cfg.send_capacity, _cfg.rt_timeout, _cfg.fixed_isn};
-
-    bool _active = false;
 
     //! outbound queue of segments that the TCPConnection wants sent
     std::queue<TCPSegment> _segments_out{};
@@ -20,10 +21,27 @@ class TCPConnection{
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
 
+    size_t _time_since_last_segment_received_counter{0};
+
+    bool _active{true};
+
+
+    void send_RST();
+    bool real_send();
+    void set_ack_and_windowsize(TCPSegment& segment);
+    // prereqs1 : The inbound stream has been fully assembled and has ended.
+    bool check_inbound_ended();
+    // prereqs2 : The outbound stream has been ended by the local application and fully sent (including
+    // the fact that it ended, i.e. a segment with fin ) to the remote peer.
+    // prereqs3 : The outbound stream has been fully acknowledged by the remote peer.
+    bool check_outbound_ended();
+
+
   public:
     //! \name "Input" interface for the writer
     //!@{
 
+    //! \brief Initiate a connection by sending a SYN segment
     void connect();
 
     //! \brief Write data to the outbound byte stream, and send it over TCP if possible
@@ -33,7 +51,9 @@ class TCPConnection{
     //! \returns the number of `bytes` that can be written right now.
     size_t remaining_outbound_capacity() const;
 
+    //! \brief Shut down the outbound byte stream (still allows reading incoming data)
     void end_input_stream();
+    //!@}
 
     //! \name "Output" interface for the reader
     //!@{
@@ -89,4 +109,7 @@ class TCPConnection{
     TCPConnection &operator=(TCPConnection &&other) = default;
     TCPConnection(const TCPConnection &other) = delete;
     TCPConnection &operator=(const TCPConnection &other) = delete;
+    //!@}
 };
+
+#endif  // SPONGE_LIBSPONGE_TCP_FACTORED_HH

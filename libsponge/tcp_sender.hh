@@ -39,6 +39,8 @@ class TCPSender{
 
         bool windowZero{false};
 
+        void sendSegment(TCPSegment& segment);
+
     public:
         TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
               const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,

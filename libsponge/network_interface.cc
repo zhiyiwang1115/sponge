@@ -49,7 +49,6 @@ std::optional<InternetDatagram> NetworkInterface::recv_frame(const EthernetFrame
     }
     ARPMessage message = ARPMessage();
     if(message.parse(frame.payload())==ParseResult::NoError){
-        std::cout << "here2" << std::endl;
         if(message.opcode == ARPMessage::OPCODE_REQUEST){
             if(message.target_ip_address==_ip_address.ipv4_numeric()){
                 EthernetFrame replyFrame = EthernetFrame();

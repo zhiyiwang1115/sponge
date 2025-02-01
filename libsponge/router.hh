@@ -1,10 +1,10 @@
-#ifndef SPONGE_LIBSPONGE_ROUTER_HH
-#define SPONGE_LIBSPONGE_ROUTER_HH
-
+#pragma once
 #include "network_interface.hh"
 
 #include <optional>
 #include <queue>
+#include <array>
+#include <memory>
 
 //! \brief A wrapper for NetworkInterface that makes the host-side
 //! interface asynchronous: instead of returning received datagrams
@@ -38,16 +38,12 @@ class AsyncNetworkInterface : public NetworkInterface {
     std::queue<InternetDatagram> &datagrams_out() { return _datagrams_out; }
 };
 
-class RouteEntry {
-    public:
-    const uint32_t _route_prefix;
-    const uint8_t _prefix_length;
-    const std::optional<Address> _next_hop;
-    const size_t _interface_num;
-    const uint32_t _prefix_mask;
-    RouteEntry(uint32_t a, uint8_t b, std::optional<Address> c, size_t d, uint32_t e):_route_prefix(a), _prefix_length(b), _next_hop(c), _interface_num(d), _prefix_mask(e){}
+struct Trie{
+    std::array<Trie*, 2> children = {nullptr, nullptr};
+    std::optional<Address> next_hop{};
+    size_t interface_num = 0;
+    bool exist{false};
 };
-
 
 //! \brief A router that has multiple network interfaces and
 //! performs longest-prefix-match routing between them.
@@ -55,12 +51,12 @@ class Router {
     //! The router's collection of network interfaces
     std::vector<AsyncNetworkInterface> _interfaces{};
 
-    std::vector<RouteEntry> _routing_table{};
-
     //! Send a single datagram from the appropriate outbound interface to the next hop,
     //! as specified by the route with the longest prefix_length that matches the
     //! datagram's destination address.
     void route_one_datagram(InternetDatagram &dgram);
+
+    Trie* trie = new Trie();
 
   public:
     //! Add an interface to the router
@@ -83,5 +79,3 @@ class Router {
     //! Route packets between the interfaces
     void route();
 };
-
-#endif  // SPONGE_LIBSPONGE_ROUTER_HH

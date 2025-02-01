@@ -55,6 +55,17 @@
         "cerrno": "cpp",
         "ios": "cpp",
         "locale": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "ranges": "cpp",
+        "span": "cpp",
+        "compare": "cpp",
+        "bit": "cpp",
+        "charconv": "cpp",
+        "concepts": "cpp",
+        "numbers": "cpp",
+        "stop_token": "cpp",
+        "cinttypes": "cpp",
+        "format": "cpp",
+        "semaphore": "cpp"
     }
 }

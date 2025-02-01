@@ -1,5 +1,6 @@
 #include "socket.hh"
 #include "util.hh"
+#include "tcp_sponge_socket.hh"
 
 #include <cstdlib>
 #include <iostream>
@@ -17,7 +18,7 @@ void get_URL(const string &host, const string &path) {
     // (not just one call to read() -- everything) until you reach
     // the "eof" (end of file).
 
-    TCPSocket socket = TCPSocket();
+    CS144TCPSocket socket = CS144TCPSocket();
     Address address = Address(host, "http");
     socket.connect(address);
     string message = "GET " + path + " HTTP/1.1\r\n";
@@ -27,7 +28,7 @@ void get_URL(const string &host, const string &path) {
     while(!socket.eof()){
         cout << socket.read();
     }
-    socket.close();
+    socket.wait_until_closed();
     cerr << "Function called: get_URL(" << host << ", " << path << ").\n";
     cerr << "Warning: get_URL() has not been implemented yet.\n";
 }
@@ -53,6 +54,7 @@ int main(int argc, char *argv[]) {
 
         // Call the student-written function.
         get_URL(host, path);
+        
     } catch (const exception &e) {
         cerr << e.what() << "\n";
         return EXIT_FAILURE;

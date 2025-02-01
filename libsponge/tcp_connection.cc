@@ -1,6 +1,15 @@
 #include "tcp_connection.hh"
 #include <limits>
 
+void TCPConnection::sendReset(){
+    _sender.stream_in().set_error();
+    _receiver.stream_out().set_error();
+    _active = false;
+    TCPSegment segment = TCPSegment();
+    segment.header().rst = true;
+    _segments_out.push(segment);  
+}
+
 bool TCPConnection::sendSegments(){
     bool sent = false;
     while(_sender.segments_out().size()){
@@ -66,6 +75,7 @@ void TCPConnection::segment_received(const TCPSegment &seg){
         sendSegments();
     }
     if(seg.length_in_sequence_space()){
+        //synack
         _sender.fill_window();
         if(!sendSegments()){
             _sender.send_empty_segment();
@@ -93,12 +103,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick){
 
     _sender.tick(ms_since_last_tick);
     if(_sender.consecutive_retransmissions()>TCPConfig::MAX_RETX_ATTEMPTS){
-        _sender.stream_in().set_error();
-        _receiver.stream_out().set_error();
-        _active = false;
-        TCPSegment segment = TCPSegment();
-        segment.header().rst = true;
-        _segments_out.push(segment);
+        sendReset();
         return;
     }
     sendSegments();
@@ -110,11 +115,6 @@ bool TCPConnection::active() const{
 
 TCPConnection::~TCPConnection(){
     if(_active){
-        _sender.stream_in().set_error();
-        _receiver.stream_out().set_error();
-        _active = false;
-        TCPSegment segment = TCPSegment();
-        segment.header().rst = true;
-        _segments_out.push(segment);  
+        sendReset();
     }   
 }
